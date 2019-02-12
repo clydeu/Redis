@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using RedisPOC.ConnectionFactory;
+using System;
 
 namespace RedisPOC.Controllers
 {
@@ -10,36 +8,24 @@ namespace RedisPOC.Controllers
     [ApiController]
     public class ValuesController : ControllerBase
     {
-        // GET api/values
+        private readonly IRedisConnectionFactory redisConnectionFactory;
+
+        public ValuesController(IRedisConnectionFactory redisConnectionFactory)
+        {
+            this.redisConnectionFactory = redisConnectionFactory;
+        }
+
         [HttpGet]
-        public ActionResult<IEnumerable<string>> Get()
+        public IActionResult Get()
         {
-            return new string[] { "value1", "value2" };
-        }
+            var db = redisConnectionFactory.Connection().GetDatabase();
+            var tomorrow = DateTime.UtcNow.AddDays(1).Date;
+            var expiry = tomorrow.Subtract(DateTime.UtcNow.AddSeconds(-3));
 
-        // GET api/values/5
-        [HttpGet("{id}")]
-        public ActionResult<string> Get(int id)
-        {
-            return "value";
-        }
+            db.StringSet("TestRedisCache", "Testing for Redis Cache", expiry);
 
-        // POST api/values
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
-        }
-
-        // PUT api/values/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/values/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            var result = db.StringGet("TestRedisCache").ToString();
+            return Ok(result);
         }
     }
 }
